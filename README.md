@@ -1,0 +1,2 @@
+# Machine-Learning-assisted-Optical-Imaging-Design-using-Zemax
+本项目区别于上一个光学设计初版，除了引入单透镜系统还引入双胶合透镜系统，利用Zemax构建数据据，根据控制变量法，改变焦距等物理量观察光斑变化，通过python提取像素重心与灰度计算RMS光斑大小
