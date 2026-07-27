@@ -1,0 +1,38 @@
+Prediction of RMS Spot with Excellent Imaging Quality under Specified Conditions
+import numpy as np
+import joblib
+
+# 加载已训练好的模型与标准化器
+model_load = joblib.load("doublet_model.pkl")
+scaler_load = joblib.load("doublet_scaler.pkl")
+
+print("===== 交互式光学参数预测RMS光斑工具 =====")
+print("输入格式：R1 R2 R3 R4 透镜厚度 像面距离，空格分隔，全部输入正数")
+print("输入 q 可退出程序\n")
+
+while True:
+    s_input = input("请输入6个光学参数：")
+    if s_input.lower() == "q":
+        print("程序退出")
+        break
+
+    try:
+        arr_list = list(map(float, s_input.split()))
+        # 判断参数数量是否为6
+        if len(arr_list) != 6:
+            print("错误：必须输入6个参数！格式：R1 R2 R3 R4 透镜厚度 像面距离\n")
+            continue
+        # 校验所有数值不能为负数
+        has_neg = any(num < 0 for num in arr_list)
+        if has_neg:
+            print("错误：所有光学参数不允许输入负数，请重新输入正数！\n")
+            continue
+
+        # 标准化并预测
+        arr = np.array(arr_list).reshape(1, -1)
+        arr_scaled = scaler_load.transform(arr)
+        res_rms = model_load.predict(arr_scaled)[0]
+        print(f"预测RMS光斑值: {res_rms:.6f}\n")
+
+    except Exception:
+        print("输入错误，请输入纯数字，参数之间用空格隔开！\n")
