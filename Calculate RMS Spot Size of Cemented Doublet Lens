@@ -1,0 +1,87 @@
+Calculate RMS Spot Size of Cemented Doublet Lens
+import cv2
+import numpy as np
+import pandas as pd
+import os
+
+# ==============================
+# 双胶合透镜光斑图片文件夹
+# ==============================
+folder_path = "double"
+results = []
+
+# ==============================
+# 遍历所有光斑图片
+# ==============================
+for filename in os.listdir(folder_path):
+    if filename.lower().endswith((".png", ".jpg", ".bmp", ".tif")):
+        img_path = os.path.join(folder_path, filename)
+        # 读取灰度光斑图
+        img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            continue
+
+        # Step1 高斯滤波降噪
+        blur = cv2.GaussianBlur(img, (5, 5), 0)
+        # Step2 Otsu自动阈值分割光斑
+        _, binary = cv2.threshold(
+            blur,
+            0,
+            255,
+            cv2.THRESH_BINARY + cv2.THRESH_OTSU
+        )
+        # Step3 开运算去除微小噪点
+        kernel = np.ones((3, 3), np.uint8)
+        binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+        # Step4 提取有效光斑区域
+        spot = cv2.bitwise_and(img, img, mask=binary)
+        total = spot.sum()
+        if total == 0:
+            print(filename, "未检测到双胶合透镜光斑")
+            continue
+
+        # Step5 计算光斑重心
+        y, x = np.indices(spot.shape)
+        cx = (x * spot).sum() / total
+        cy = (y * spot).sum() / total
+
+        # Step6 计算X/Y方向RMS尺寸、总RMS光斑半径
+        rms_x = np.sqrt(((x - cx)**2 * spot).sum() / total)
+        rms_y = np.sqrt(((y - cy)**2 * spot).sum() / total)
+        rms_radius = np.sqrt(rms_x**2 + rms_y**2)
+
+        # 存入结果列表
+        results.append([
+            filename,
+            round(cx, 3),
+            round(cy, 3),
+            round(rms_x, 3),
+            round(rms_y, 3),
+            round(rms_radius, 3)
+        ])
+
+        # 打印双胶合透镜光斑参数
+        print("--------------------------------")
+        print(f"双胶合透镜光斑图: {filename}")
+        print("重心: ({:.2f},{:.2f})".format(cx, cy))
+        print("RMS_x = {:.3f}".format(rms_x))
+        print("RMS_y = {:.3f}".format(rms_y))
+        print("综合RMS光斑半径 = {:.3f}".format(rms_radius))
+
+# ==============================
+# 导出双胶合透镜计算结果Excel
+# ==============================
+df = pd.DataFrame(
+    results,
+    columns=[
+        "图片名称",
+        "重心cx",
+        "重心cy",
+        "RMS_x",
+        "RMS_y",
+        "总RMS光斑半径"
+    ]
+)
+df.to_excel("双胶合透镜RMS光斑计算结果.xlsx", index=False)
+print("\n==== 全部双胶合透镜光斑处理完成 ====")
+print("计算结果已保存：双胶合透镜RMS光斑计算结果.xlsx")
