@@ -1,0 +1,62 @@
+The cemented doublet lens model predicts favorable RMS spot size for imaging quality under specified conditions.
+import numpy as np
+import pandas as pd
+import joblib
+
+# 1. 加载训练好的模型与标准化器
+model = joblib.load("doublet_model.pkl")
+scaler = joblib.load("doublet_scaler.pkl")
+
+# 2. 手动输入四组曲率、透镜总厚度
+R1 = float(input("请输入R1(mm): "))
+R2 = float(input("请输入R2(mm): "))
+R3 = float(input("请输入R3(mm): "))
+R4 = float(input("请输入R4(mm): "))
+thickness = float(input("请输入透镜厚度(mm): "))
+
+# 3. 像面扫描范围：30 ~ 200，步长0.5
+image_positions = np.arange(30, 200.1, 0.5)
+results = []
+
+# 4. 循环遍历所有像面距离，预测RMS光斑
+for image_pos in image_positions:
+    # 构造单组输入特征
+    x = np.array([[
+        R1,
+        R2,
+        R3,
+        R4,
+        thickness,
+        image_pos
+    ]])
+    # 标准化 + 预测
+    x_scaled = scaler.transform(x)
+    rms = model.predict(x_scaled)[0]
+    results.append([image_pos, rms])
+
+# 5. 转为表格DataFrame
+result = pd.DataFrame(
+    results,
+    columns=["像面位置(mm)", "预测RMS(μm)"]
+)
+
+# 6. 查找RMS最小的最优像面
+best = result.loc[result["预测RMS(μm)"].idxmin()]
+
+# 7. 打印全部参数与最优结果
+print("================================")
+print(f"R1 = {R1:.2f} mm")
+print(f"R2 = {R2:.2f} mm")
+print(f"R3 = {R3:.2f} mm")
+print(f"R4 = {R4:.2f} mm")
+print(f"厚度 = {thickness:.2f} mm")
+print("================================")
+print(f"\n最佳像面位置: {best['像面位置(mm)']:.2f} mm")
+print(f"预测最小RMS: {best['预测RMS(μm)']:.4f} μm")
+
+# 8. 全部扫描数据保存Excel
+result.to_excel(
+    "双胶合透镜最佳像面预测.xlsx",
+    index=False
+)
+print("\n文件已保存: 双胶合透镜最佳像面预测.xlsx")
