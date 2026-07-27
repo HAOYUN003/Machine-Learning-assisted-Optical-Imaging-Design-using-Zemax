@@ -1,0 +1,38 @@
+The cemented doublet lens model outputs the RMS spot size under random input conditions.
+import numpy as np
+import joblib
+
+# Load trained model and scaler for doublet lens
+model_load = joblib.load("doublet_model.pkl")
+scaler_load = joblib.load("doublet_scaler.pkl")
+
+print("===== Interactive Doublet Lens RMS Spot Size Prediction Tool =====")
+print("Input format: R1 R2 R3 R4 lens_thickness image_distance, separated by spaces. All values positive.")
+print("Enter 'q' to quit the program.\n")
+
+while True:
+    s_input = input("Please enter 6 optical parameters: ")
+    if s_input.lower() == "q":
+        print("Program exiting.")
+        break
+
+    try:
+        arr_list = list(map(float, s_input.split()))
+        # Check if there are exactly six parameters
+        if len(arr_list) != 6:
+            print("Error: Exactly 6 parameters required! Format: R1 R2 R3 R4 lens_thickness image_distance\n")
+            continue
+        # Check for negative values
+        has_neg = any(num < 0 for num in arr_list)
+        if has_neg:
+            print("Error: All optical parameters must be positive. Please re-enter.\n")
+            continue
+
+        # Standardization and prediction
+        arr = np.array(arr_list).reshape(1, -1)
+        arr_scaled = scaler_load.transform(arr)
+        res_rms = model_load.predict(arr_scaled)[0]
+        print(f"Predicted RMS spot size: {res_rms:.6f}\n")
+
+    except Exception:
+        print("Invalid input! Please enter numeric values separated by spaces.\n")
