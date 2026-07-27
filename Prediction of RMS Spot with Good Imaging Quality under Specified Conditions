@@ -1,0 +1,74 @@
+Prediction of RMS Spot with Good Imaging Quality under Specified Conditions
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import joblib
+
+# ==============================
+# 1. 加载训练好的模型和标准化器
+# ==============================
+model = joblib.load("opt_model.pkl")
+scaler = joblib.load("opt_scaler.pkl")
+
+# ==============================
+# 2. 用户输入单透镜参数
+# ==============================
+R1 = float(input("请输入R1(mm): "))
+R2 = float(input("请输入R2(mm): "))
+thickness = float(input("请输入透镜厚度(mm): "))
+
+# ==============================
+# 3. 自动搜索最佳像面位置
+# ==============================
+# 根据你的数据集范围修改
+image_positions = np.arange(30, 200.1, 0.5)
+results = []
+for image_pos in image_positions:
+    x = np.array([[R1,
+                   R2,
+                   thickness,
+                   image_pos]])
+    x_scaled = scaler.transform(x)
+    rms = model.predict(x_scaled)[0]
+    results.append([image_pos, rms])
+
+# ==============================
+# 4. 转成DataFrame
+# ==============================
+result = pd.DataFrame(
+    results,
+    columns=[
+        "像面位置(mm)",
+        "预测RMS(μm)"
+    ]
+)
+
+# ==============================
+# 5. 找最佳焦点
+# ==============================
+best = result.loc[result["预测RMS(μm)"].idxmin()]
+print("\n==========================")
+print("AI自动优化结果")
+print("==========================")
+print(f"R1 = {R1:.2f} mm")
+print(f"R2 = {R2:.2f} mm")
+print(f"透镜厚度 = {thickness:.2f} mm")
+print("\n最佳像面位置: ")
+print(f"{best['像面位置(mm)']:.2f} mm")
+print("预测RMS光斑: ")
+print(f"{best['预测RMS(μm)']:.4f} μm")
+
+# ==============================
+# 6. 输出全部搜索结果
+# ==============================
+print("\n全部搜索结果: ")
+print(result)
+
+# ==============================
+# 7. 保存Excel
+# ==============================
+result.to_excel(
+    "AI最佳像面搜索结果.xlsx",
+    index=False
+)
+print("\n已保存: AI最佳像面搜索结果.xlsx")
